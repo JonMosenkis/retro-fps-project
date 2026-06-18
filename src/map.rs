@@ -1,8 +1,15 @@
 pub const TILE_SIZE: f32 = 48.0;
 
+pub type MaterialId = u8;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Wall {
+    pub material_id: MaterialId,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Tile {
-    Wall,
+    Wall(Wall),
     Empty,
 }
 
@@ -62,7 +69,8 @@ impl Map {
 
             for (column_index, character) in row.chars().enumerate() {
                 let tile = match character {
-                    '#' => Tile::Wall,
+                    '1' => Tile::Wall(Wall { material_id: 1 }),
+                    '2' => Tile::Wall(Wall { material_id: 2 }),
                     '.' => Tile::Empty,
                     _ => {
                         return Err(MapError::UnsupportedTile {
@@ -106,7 +114,7 @@ impl Map {
             return true;
         };
 
-        matches!(self.tile_at(tile_x, tile_y), Some(Tile::Wall) | None)
+        matches!(self.tile_at(tile_x, tile_y), Some(Tile::Wall(_)) | None)
     }
 
     fn world_to_tile(&self, world_x: f32, world_y: f32) -> Option<(usize, usize)> {
@@ -127,29 +135,35 @@ impl Map {
 
 #[cfg(test)]
 mod tests {
-    use super::{Map, MapError, Tile, TILE_SIZE};
+    use super::{Map, MapError, Tile, Wall, TILE_SIZE};
 
     #[test]
     fn from_rows_sets_expected_dimensions() {
-        let map = Map::from_rows(&["###", "#.#"]).expect("map should parse");
+        let map = Map::from_rows(&["111", "1.2"]).expect("map should parse");
 
         assert_eq!(map.width(), 3);
         assert_eq!(map.height(), 2);
     }
 
     #[test]
-    fn tile_at_returns_expected_tiles() {
-        let map = Map::from_rows(&["#.", ".#"]).expect("map should parse");
+    fn tile_at_returns_expected_wall_materials_and_floor() {
+        let map = Map::from_rows(&["1.", ".2"]).expect("map should parse");
 
-        assert_eq!(map.tile_at(0, 0), Some(Tile::Wall));
+        assert_eq!(
+            map.tile_at(0, 0),
+            Some(Tile::Wall(Wall { material_id: 1 }))
+        );
         assert_eq!(map.tile_at(1, 0), Some(Tile::Empty));
         assert_eq!(map.tile_at(0, 1), Some(Tile::Empty));
-        assert_eq!(map.tile_at(1, 1), Some(Tile::Wall));
+        assert_eq!(
+            map.tile_at(1, 1),
+            Some(Tile::Wall(Wall { material_id: 2 }))
+        );
     }
 
     #[test]
     fn from_rows_rejects_inconsistent_row_widths() {
-        let error = Map::from_rows(&["###", "##"]).expect_err("map should fail");
+        let error = Map::from_rows(&["111", "11"]).expect_err("map should fail");
 
         assert_eq!(
             error,
@@ -163,7 +177,7 @@ mod tests {
 
     #[test]
     fn from_rows_rejects_unsupported_characters() {
-        let error = Map::from_rows(&["#x"]).expect_err("map should fail");
+        let error = Map::from_rows(&["1x"]).expect_err("map should fail");
 
         assert_eq!(
             error,
@@ -177,29 +191,36 @@ mod tests {
 
     #[test]
     fn tile_at_returns_none_when_out_of_bounds() {
-        let map = Map::from_rows(&["##", "##"]).expect("map should parse");
+        let map = Map::from_rows(&["11", "22"]).expect("map should parse");
 
         assert_eq!(map.tile_at(2, 0), None);
         assert_eq!(map.tile_at(0, 2), None);
     }
 
     #[test]
-    fn is_blocked_at_world_returns_true_for_walls() {
-        let map = Map::from_rows(&["#.", ".."]).expect("map should parse");
+    fn is_blocked_at_world_returns_true_for_wall_type_a() {
+        let map = Map::from_rows(&["1.", ".."]).expect("map should parse");
+
+        assert!(map.is_blocked_at_world(TILE_SIZE * 0.5, TILE_SIZE * 0.5));
+    }
+
+    #[test]
+    fn is_blocked_at_world_returns_true_for_wall_type_b() {
+        let map = Map::from_rows(&["2.", ".."]).expect("map should parse");
 
         assert!(map.is_blocked_at_world(TILE_SIZE * 0.5, TILE_SIZE * 0.5));
     }
 
     #[test]
     fn is_blocked_at_world_returns_false_for_empty_tiles() {
-        let map = Map::from_rows(&["#.", ".."]).expect("map should parse");
+        let map = Map::from_rows(&["1.", ".."]).expect("map should parse");
 
         assert!(!map.is_blocked_at_world(TILE_SIZE * 1.5, TILE_SIZE * 0.5));
     }
 
     #[test]
     fn is_blocked_at_world_returns_true_out_of_bounds() {
-        let map = Map::from_rows(&["##", "##"]).expect("map should parse");
+        let map = Map::from_rows(&["11", "22"]).expect("map should parse");
 
         assert!(map.is_blocked_at_world(-1.0, TILE_SIZE));
         assert!(map.is_blocked_at_world(TILE_SIZE * 2.0, TILE_SIZE));

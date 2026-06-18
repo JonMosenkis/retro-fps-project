@@ -1,5 +1,5 @@
 use crate::{
-    map::{Map, Tile, TILE_SIZE},
+    map::{Map, MaterialId, Tile, TILE_SIZE},
     player::Player,
 };
 use macroquad::prelude::*;
@@ -57,7 +57,15 @@ pub fn draw_player(player: &Player) {
 
 fn tile_color(tile: Tile) -> Color {
     match tile {
-        Tile::Wall => Color::from_rgba(50, 115, 220, 255),
+        Tile::Wall(wall) => color_for_material(wall.material_id),
         Tile::Empty => Color::from_rgba(200, 185, 145, 255),
+    }
+}
+
+fn color_for_material(material_id: MaterialId) -> Color {
+    match material_id {
+        1 => Color::from_rgba(50, 115, 220, 255),
+        2 => Color::from_rgba(210, 120, 40, 255),
+        _ => MAGENTA,
     }
 }

@@ -39,3 +39,20 @@ This file is append-only. It records what changed by development stage so future
 ## Current Summary
 - Stage 1 established the world representation and visible debug map.
 - Stage 2 added the first interactive gameplay behavior on top of that map.
+
+## Stage 3 - Two visible wall materials in the debug map
+- Date: 2026-06-18
+- User-visible result:
+  - The top-down map now shows two different wall colors instead of one generic wall color.
+  - The player can move around both wall materials, and both still block movement the same way.
+- What was added:
+  - `Wall` data in `src/map.rs` with a `material_id` field
+  - wall parsing from `1` and `2` map characters into material-carrying tiles
+  - updated blocking logic so all wall materials count as solid
+  - distinct wall colors in `src/debug_view.rs`
+  - revised sample level in `src/main.rs` so both wall materials are visible during manual play
+  - new unit-test coverage for parsing and blocking behavior across both wall materials
+- Architectural result:
+  - The map model now preserves wall material data directly on each wall tile, which prepares the codebase for future ray hits that need to know which wall material was struck.
+- Scope at the end of the stage:
+  - The prototype still uses only the top-down debug view, but it can now represent more than one wall material without adding textures or 3D rendering.

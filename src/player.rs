@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn moving_into_blocked_tile_keeps_player_in_place() {
-        let map = Map::from_rows(&[".#", ".."]).expect("map should parse");
+        let map = Map::from_rows(&[".2", ".."]).expect("map should parse");
         let mut player = Player::new(TILE_SIZE - 1.0, TILE_SIZE * 0.5, 0.0);
         let starting_x = player.x();
         let starting_y = player.y();

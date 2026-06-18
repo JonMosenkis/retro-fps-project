@@ -6,10 +6,10 @@
 
 ## Current Vertical Slice
 - Running the project opens a `macroquad` window titled `Retro FPS Debug Map`.
-- The screen shows a top-down grid map with wall tiles and empty floor tiles.
+- The screen shows a top-down grid map with two wall materials and empty floor tiles.
 - A player marker appears as a circle with a short facing-direction line.
 - `W` moves forward, `S` moves backward, `A` turns left, and `D` turns right.
-- Wall collision is active, so the player cannot move through blocked tiles.
+- Both wall tile types block movement, so the player cannot move through either one.
 - Simulation runs on a fixed 60 Hz update step.
 
 ## Implemented Systems
@@ -18,9 +18,11 @@
 - Responsibility: own the fixed tile grid and answer tile/blocking queries.
 - Files: `src/map.rs`
 - Important rules and invariants:
-  - `#` means wall, `.` means empty floor.
+  - `1` means a wall with material id `1`, `2` means a wall with material id `2`, and `.` means empty floor.
+  - Tile queries preserve wall material data as `Tile::Wall(Wall { material_id })`.
   - All rows must have the same width.
   - Invalid map input is rejected during parsing.
+  - Any wall material is blocking.
   - World positions outside the map count as blocked.
   - `TILE_SIZE` is `48.0` world units.
 
@@ -40,6 +42,8 @@
 - Files: `src/debug_view.rs`
 - Important rules and invariants:
   - Rendering is top-down only.
+  - Material `1` and material `2` use different solid colors for easy inspection.
+  - Unknown material ids render as `MAGENTA` so missing debug colors are obvious.
   - Map tiles are offset on screen rather than drawn at the window origin.
 
 ### App Loop and Input
@@ -74,11 +78,11 @@
 - Run: `cargo run`
 - Expect:
   - a window opens
-  - a top-down tile map is visible
+  - a top-down tile map is visible with two different wall colors
   - a player marker and facing line are visible
   - `W/S` move forward/backward
   - `A/D` rotate the player
-  - the player stops at walls and slides along them when moving diagonally into edges over multiple frames
+  - the player stops at both wall materials and slides along them when moving diagonally into edges over multiple frames
 
 ## Known Limits
 - No raycasting yet.

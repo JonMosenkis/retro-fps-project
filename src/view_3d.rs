@@ -4,12 +4,20 @@ use macroquad::prelude::*;
 
 const WALL_HEIGHT_WORLD_UNITS: f32 = 48.0;
 const NEAR_PLANE_DISTANCE: f32 = 0.0001;
-const VOID_COLOR: Color = Color {
-    r: 22.0 / 255.0,
-    g: 18.0 / 255.0,
-    b: 16.0 / 255.0,
+const CEILING_COLOR: Color = Color {
+    r: 44.0 / 255.0,
+    g: 52.0 / 255.0,
+    b: 68.0 / 255.0,
     a: 1.0,
 };
+const FLOOR_COLOR: Color = Color {
+    r: 38.0 / 255.0,
+    g: 28.0 / 255.0,
+    b: 24.0 / 255.0,
+    a: 1.0,
+};
+const MIN_SHADE_INTENSITY: f32 = 0.25;
+const SHADE_FALLOFF_DISTANCE: f32 = 240.0;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct VerticalSpan {
@@ -60,12 +68,21 @@ pub fn project_view_spans(
 }
 
 pub fn draw_view_3d(spans: &[VerticalSpan], viewport_rect: Rect) {
+    let horizon_y = horizon_y(viewport_rect.h);
+
     draw_rectangle(
         viewport_rect.x,
         viewport_rect.y,
         viewport_rect.w,
-        viewport_rect.h,
-        VOID_COLOR,
+        horizon_y,
+        CEILING_COLOR,
+    );
+    draw_rectangle(
+        viewport_rect.x,
+        viewport_rect.y + horizon_y,
+        viewport_rect.w,
+        viewport_rect.h - horizon_y,
+        FLOOR_COLOR,
     );
 
     if spans.is_empty() {
@@ -78,7 +95,14 @@ pub fn draw_view_3d(spans: &[VerticalSpan], viewport_rect: Rect) {
             viewport_rect.y + span.top_y,
             span.width,
             (span.bottom_y - span.top_y).max(1.0),
-            color_for_material(span.material_id),
+            wall_color_for_distance(
+                span.material_id,
+                distance_from_span_height(
+                    span.bottom_y - span.top_y,
+                    viewport_rect.h,
+                    WALL_HEIGHT_WORLD_UNITS,
+                ),
+            ),
         );
     }
 }
@@ -96,7 +120,37 @@ fn projected_span_height(
     (wall_height_world_units / corrected_distance) * projection_scale
 }
 
-fn color_for_material(material_id: MaterialId) -> Color {
+fn horizon_y(viewport_height: f32) -> f32 {
+    viewport_height * 0.5
+}
+
+fn distance_from_span_height(
+    span_height: f32,
+    viewport_height: f32,
+    wall_height_world_units: f32,
+) -> f32 {
+    let projection_scale = viewport_height * 0.5;
+    let clamped_span_height = span_height.max(1.0);
+    (wall_height_world_units * projection_scale / clamped_span_height).max(NEAR_PLANE_DISTANCE)
+}
+
+fn shade_for_distance(distance: f32) -> f32 {
+    (1.0 - distance / SHADE_FALLOFF_DISTANCE).clamp(MIN_SHADE_INTENSITY, 1.0)
+}
+
+fn wall_color_for_distance(material_id: MaterialId, distance: f32) -> Color {
+    let shade = shade_for_distance(distance);
+    let base_color = base_color_for_material(material_id);
+
+    Color {
+        r: (base_color.r * shade).clamp(0.0, 1.0),
+        g: (base_color.g * shade).clamp(0.0, 1.0),
+        b: (base_color.b * shade).clamp(0.0, 1.0),
+        a: base_color.a,
+    }
+}
+
+fn base_color_for_material(material_id: MaterialId) -> Color {
     match material_id {
         1 => Color::from_rgba(75, 145, 255, 255),
         2 => Color::from_rgba(240, 150, 55, 255),
@@ -106,7 +160,10 @@ fn color_for_material(material_id: MaterialId) -> Color {
 
 #[cfg(test)]
 mod tests {
-    use super::{color_for_material, project_view_spans};
+    use super::{
+        base_color_for_material, horizon_y, project_view_spans, shade_for_distance,
+        wall_color_for_distance,
+    };
     use crate::{
         map::Wall,
         raycast::{RayHit, ViewRaySample},
@@ -174,12 +231,50 @@ mod tests {
 
     #[test]
     fn material_one_maps_to_expected_color() {
-        assert_eq!(color_for_material(1), Color::from_rgba(75, 145, 255, 255));
+        assert_eq!(
+            base_color_for_material(1),
+            Color::from_rgba(75, 145, 255, 255)
+        );
     }
 
     #[test]
     fn material_two_maps_to_expected_color() {
-        assert_eq!(color_for_material(2), Color::from_rgba(240, 150, 55, 255));
+        assert_eq!(
+            base_color_for_material(2),
+            Color::from_rgba(240, 150, 55, 255)
+        );
+    }
+
+    #[test]
+    fn nearer_distance_produces_brighter_wall_color() {
+        let near_color = wall_color_for_distance(1, 40.0);
+        let far_color = wall_color_for_distance(1, 160.0);
+
+        assert!(near_color.r > far_color.r);
+        assert!(near_color.g > far_color.g);
+        assert!(near_color.b > far_color.b);
+    }
+
+    #[test]
+    fn distance_shading_stays_clamped_for_extreme_values() {
+        let near_shade = shade_for_distance(0.0);
+        let far_shade = shade_for_distance(10_000.0);
+
+        assert_eq!(near_shade, 1.0);
+        assert_eq!(far_shade, 0.25);
+    }
+
+    #[test]
+    fn different_materials_stay_distinct_after_shading() {
+        let material_one = wall_color_for_distance(1, 120.0);
+        let material_two = wall_color_for_distance(2, 120.0);
+
+        assert_ne!(material_one, material_two);
+    }
+
+    #[test]
+    fn horizon_splits_viewport_in_half() {
+        assert_eq!(horizon_y(120.0), 60.0);
     }
 
     fn sample_with_hit(index: usize, angle: f32, distance: f32, material_id: u8) -> ViewRaySample {

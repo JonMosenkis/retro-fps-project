@@ -88,3 +88,20 @@ This file is append-only. It records what changed by development stage so future
   - The code now separates world sampling (`raycast.rs`) from screen-space projection (`view_3d.rs`) and from debug visualization (`debug_view.rs`), which keeps the current wall-only step readable without locking the project into a wall-specific renderer API.
 - Scope at the end of the stage:
   - The prototype can render flat-colored 3D wall spans, but it still has no textures, floor or ceiling rendering, sprites, doors, or broader scene content.
+
+## Stage 6 - Ceiling, floor, and distance-shaded walls
+- Date: 2026-06-18
+- User-visible result:
+  - The 3D panel now shows a distinct ceiling and floor instead of a single void background.
+  - Wall columns get darker as they get farther away, which makes depth easier to read while moving.
+- What was added:
+  - ceiling and floor band drawing in `src/view_3d.rs`
+  - simple clamped distance shading for wall colors in `src/view_3d.rs`
+  - unit tests for shading brightness, clamp behavior, material distinction after shading, and midpoint horizon placement
+- Architectural result:
+  - Scene appearance remains owned entirely by `src/view_3d.rs`, while ray sampling and app wiring stay unchanged.
+- Scope at the end of the stage:
+  - The prototype has a more readable wall-only 3D scene, but it still has no textures, sprite rendering, doors, enemies, or other world objects.
+- Follow-up note:
+  - The current distance shading is a simple camera-distance cue, not world lighting.
+  - A likely next visual step is side shading based on whether a ray hit a vertical or horizontal wall face, which should feel closer to classic raycasters without adding a full lighting system.

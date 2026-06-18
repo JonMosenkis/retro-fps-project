@@ -6,7 +6,7 @@
 
 ## Current Vertical Slice
 - Running the project opens a `macroquad` window titled `Retro FPS Debug Map`.
-- The left side shows a simple 3D wall view made of flat-colored vertical spans.
+- The left side shows a simple 3D scene with a flat ceiling band, a flat floor band, and shaded wall spans.
 - The right side shows a scaled top-down debug map with the player marker and ray fan.
 - `W` moves forward, `S` moves backward, `A` turns left, and `D` turns right.
 - Both wall tile types block movement, so the player cannot move through either one.
@@ -54,9 +54,12 @@
 - Files: `src/view_3d.rs`
 - Important rules and invariants:
   - The 3D panel uses one vertical span per ray hit.
+  - The viewport horizon stays fixed at the vertical midpoint.
   - Projection uses fisheye-corrected distance so edge rays do not look obviously stretched.
   - Only hit rays create spans; rays that leave the map create no 3D wall slice.
-  - Wall materials still render as flat colors; there are no textures, floor spans, or ceiling spans yet.
+  - The renderer fills the top half with a ceiling color and the bottom half with a floor color before drawing walls.
+  - Wall colors come from material-specific base colors plus simple clamped distance darkening.
+  - Unknown material ids still render as `MAGENTA` so missing wall colors stay obvious.
 
 ### Raycasting
 - Responsibility: cast rays through the tile grid and report first wall hits in world space.
@@ -87,7 +90,8 @@
 5. Each simulation step calls `Player::step(intent, &map, step_seconds)`.
 6. Rendering casts the current view ray fan from the player state.
 7. Rendering projects ray hits into 3D vertical spans for the left panel.
-8. Rendering draws the 3D panel and the scaled debug panel from the same ray samples.
+8. Rendering draws ceiling, floor, and shaded wall spans in the 3D panel.
+9. Rendering draws the scaled debug panel from the same ray samples.
 
 ## File Ownership
 - `src/main.rs`: app setup, hard-coded level data, keyboard input, fixed-step loop
@@ -101,22 +105,22 @@
 - `src/map.rs` covers map parsing, tile lookup, bounds behavior, and blocked-vs-empty world queries.
 - `src/player.rs` covers forward/backward movement, turning, wall collision, and deterministic replay of the same input sequence.
 - `src/raycast.rs` covers first-hit distance, material preservation, no-hit map exits, left-to-right sampling order, and axis-aligned rays.
-- `src/view_3d.rs` covers distance-based span height, fisheye correction symmetry, no-hit omission, left-to-right span order, and flat material color mapping.
+- `src/view_3d.rs` covers distance-based span height, fisheye correction symmetry, no-hit omission, left-to-right span order, base material colors, distance shading clamps, shaded material distinction, and horizon placement.
 
 ## Manual QA
 - Run: `cargo run`
 - Expect:
   - a window opens
-  - the left side shows a flat-colored 3D wall view
+  - the left side shows a ceiling band, a floor band, and shaded wall columns
   - the right side shows a scaled top-down tile map with the player marker and visible ray fan
   - `W/S` move forward/backward
   - `A/D` rotate the player
   - the 3D view and the debug rays rotate and move together
-  - nearby walls appear taller in the 3D panel than distant walls
+  - nearby walls appear taller and brighter in the 3D panel than distant walls
   - the player stops at both wall materials and slides along them when moving diagonally into edges over multiple frames
 
 ## Known Limits
-- No textures, floor casting, or ceiling rendering.
+- No textures, floor casting, or ceiling textures.
 - No doors, enemies, weapons, pickups, damage, or exit condition.
 - No external level loading; the level is hard-coded in `main.rs`.
 - No separate game-state module yet.

@@ -1,10 +1,14 @@
-use crate::map::{Map, Tile};
+use crate::{
+    map::{Map, Tile, TILE_SIZE},
+    player::Player,
+};
 use macroquad::prelude::*;
 
-const TILE_SIZE: f32 = 48.0;
 const GRID_LINE_THICKNESS: f32 = 2.0;
 const MAP_OFFSET_X: f32 = 80.0;
 const MAP_OFFSET_Y: f32 = 48.0;
+const PLAYER_RADIUS: f32 = 8.0;
+const PLAYER_DIRECTION_LENGTH: f32 = 18.0;
 
 pub fn draw_map(map: &Map) {
     for y in 0..map.height() {
@@ -27,6 +31,28 @@ pub fn draw_map(map: &Map) {
             );
         }
     }
+}
+
+pub fn draw_player(player: &Player) {
+    let screen_x = MAP_OFFSET_X + player.x();
+    let screen_y = MAP_OFFSET_Y + player.y();
+    let direction_x = screen_x + player.facing_angle().cos() * PLAYER_DIRECTION_LENGTH;
+    let direction_y = screen_y + player.facing_angle().sin() * PLAYER_DIRECTION_LENGTH;
+
+    draw_circle(
+        screen_x,
+        screen_y,
+        PLAYER_RADIUS,
+        Color::from_rgba(230, 80, 60, 255),
+    );
+    draw_line(
+        screen_x,
+        screen_y,
+        direction_x,
+        direction_y,
+        3.0,
+        Color::from_rgba(255, 245, 200, 255),
+    );
 }
 
 fn tile_color(tile: Tile) -> Color {

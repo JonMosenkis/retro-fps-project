@@ -8,6 +8,7 @@
 - Running the project opens a `macroquad` window titled `Retro FPS Debug Map`.
 - The screen shows a top-down grid map with two wall materials and empty floor tiles.
 - A player marker appears as a circle with a short facing-direction line.
+- A fixed fan of debug rays extends from the player and stops on the first wall each ray hits.
 - `W` moves forward, `S` moves backward, `A` turns left, and `D` turns right.
 - Both wall tile types block movement, so the player cannot move through either one.
 - Simulation runs on a fixed 60 Hz update step.
@@ -42,9 +43,20 @@
 - Files: `src/debug_view.rs`
 - Important rules and invariants:
   - Rendering is top-down only.
+  - Rays are drawn from already-computed world-space endpoints.
   - Material `1` and material `2` use different solid colors for easy inspection.
   - Unknown material ids render as `MAGENTA` so missing debug colors are obvious.
   - Map tiles are offset on screen rather than drawn at the window origin.
+
+### Raycasting
+- Responsibility: cast rays through the tile grid and report first wall hits in world space.
+- Files: `src/raycast.rs`
+- Important rules and invariants:
+  - A single ray returns `Option<RayHit>` so no-hit cases stay simple.
+  - Ray stepping checks one grid boundary at a time until a wall is hit or the ray exits the map.
+  - Hit results preserve the struck wall material and tile coordinates.
+  - The debug ray fan is fixed at `31` rays across a `60` degree field of view.
+  - Rays that leave the map without hitting a wall still draw up to the map edge in the debug view.
 
 ### App Loop and Input
 - Responsibility: create the level, read keyboard input, advance simulation, and call render functions.
@@ -62,17 +74,20 @@
 3. Each frame reads keyboard input into a `PlayerIntent`.
 4. Frame time is accumulated and processed in fixed `1.0 / 60.0` second simulation steps.
 5. Each simulation step calls `Player::step(intent, &map, step_seconds)`.
-6. Rendering clears the screen, draws the map, then draws the player.
+6. Rendering casts the current debug ray fan from the player state.
+7. Rendering clears the screen, draws the map, draws the rays, then draws the player.
 
 ## File Ownership
 - `src/main.rs`: app setup, hard-coded level data, keyboard input, fixed-step loop
 - `src/map.rs`: map data model, parsing, tile lookup, world collision queries
 - `src/player.rs`: player state and movement simulation
+- `src/raycast.rs`: grid ray stepping, hit detection, debug ray fan generation
 - `src/debug_view.rs`: top-down debug rendering
 
 ## Tests That Exist
 - `src/map.rs` covers map parsing, tile lookup, bounds behavior, and blocked-vs-empty world queries.
 - `src/player.rs` covers forward/backward movement, turning, wall collision, and deterministic replay of the same input sequence.
+- `src/raycast.rs` covers first-hit distance, material preservation, no-hit map exits, ray-fan ordering, and axis-aligned rays.
 
 ## Manual QA
 - Run: `cargo run`
@@ -80,12 +95,14 @@
   - a window opens
   - a top-down tile map is visible with two different wall colors
   - a player marker and facing line are visible
+  - a visible fan of rays extends from the player
   - `W/S` move forward/backward
   - `A/D` rotate the player
+  - the rays rotate and move with the player
+  - each ray ends at the first wall it reaches, or at the map edge if no wall is hit
   - the player stops at both wall materials and slides along them when moving diagonally into edges over multiple frames
 
 ## Known Limits
-- No raycasting yet.
 - No first-person 3D wall rendering yet.
 - No textures, floor casting, or ceiling rendering.
 - No doors, enemies, weapons, pickups, damage, or exit condition.

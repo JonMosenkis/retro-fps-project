@@ -149,16 +149,10 @@ mod tests {
     fn tile_at_returns_expected_wall_materials_and_floor() {
         let map = Map::from_rows(&["1.", ".2"]).expect("map should parse");
 
-        assert_eq!(
-            map.tile_at(0, 0),
-            Some(Tile::Wall(Wall { material_id: 1 }))
-        );
+        assert_eq!(map.tile_at(0, 0), Some(Tile::Wall(Wall { material_id: 1 })));
         assert_eq!(map.tile_at(1, 0), Some(Tile::Empty));
         assert_eq!(map.tile_at(0, 1), Some(Tile::Empty));
-        assert_eq!(
-            map.tile_at(1, 1),
-            Some(Tile::Wall(Wall { material_id: 2 }))
-        );
+        assert_eq!(map.tile_at(1, 1), Some(Tile::Wall(Wall { material_id: 2 })));
     }
 
     #[test]

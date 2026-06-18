@@ -1,16 +1,21 @@
 mod debug_view;
 mod map;
 mod player;
+mod raycast;
 
-use debug_view::{draw_map, draw_player};
+use debug_view::{draw_map, draw_player, draw_rays};
 use macroquad::prelude::*;
 use map::{Map, TILE_SIZE};
 use player::{Player, PlayerIntent};
+use raycast::cast_rays;
+use std::f32::consts::FRAC_PI_3;
 
 const WINDOW_WIDTH: i32 = 640;
 const WINDOW_HEIGHT: i32 = 480;
 const SIMULATION_STEP_SECONDS: f32 = 1.0 / 60.0;
 const MAX_FRAME_SECONDS: f32 = 0.25;
+const DEBUG_RAY_COUNT: usize = 31;
+const DEBUG_FOV_RADIANS: f32 = FRAC_PI_3;
 const LEVEL_ROWS: [&str; 8] = [
     "1111111111",
     "1........1",
@@ -48,7 +53,16 @@ async fn main() {
         }
 
         clear_background(BLACK);
+        let rays = cast_rays(
+            &map,
+            player.x(),
+            player.y(),
+            player.facing_angle(),
+            DEBUG_RAY_COUNT,
+            DEBUG_FOV_RADIANS,
+        );
         draw_map(&map);
+        draw_rays(&rays);
         draw_player(&player);
 
         next_frame().await;

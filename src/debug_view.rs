@@ -1,6 +1,7 @@
 use crate::{
     map::{Map, MaterialId, Tile, TILE_SIZE},
     player::Player,
+    raycast::DebugRay,
 };
 use macroquad::prelude::*;
 
@@ -9,6 +10,7 @@ const MAP_OFFSET_X: f32 = 80.0;
 const MAP_OFFSET_Y: f32 = 48.0;
 const PLAYER_RADIUS: f32 = 8.0;
 const PLAYER_DIRECTION_LENGTH: f32 = 18.0;
+const RAY_THICKNESS: f32 = 1.5;
 
 pub fn draw_map(map: &Map) {
     for y in 0..map.height() {
@@ -30,6 +32,19 @@ pub fn draw_map(map: &Map) {
                 DARKGRAY,
             );
         }
+    }
+}
+
+pub fn draw_rays(rays: &[DebugRay]) {
+    for ray in rays {
+        draw_line(
+            MAP_OFFSET_X + ray.origin_x,
+            MAP_OFFSET_Y + ray.origin_y,
+            MAP_OFFSET_X + ray.end_x,
+            MAP_OFFSET_Y + ray.end_y,
+            RAY_THICKNESS,
+            Color::from_rgba(255, 245, 140, 190),
+        );
     }
 }
 

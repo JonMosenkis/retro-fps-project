@@ -56,3 +56,19 @@ This file is append-only. It records what changed by development stage so future
   - The map model now preserves wall material data directly on each wall tile, which prepares the codebase for future ray hits that need to know which wall material was struck.
 - Scope at the end of the stage:
   - The prototype still uses only the top-down debug view, but it can now represent more than one wall material without adding textures or 3D rendering.
+
+## Stage 4 - Debug ray fan cast through the grid
+- Date: 2026-06-18
+- User-visible result:
+  - The top-down debug map now shows a fan of rays extending from the player.
+  - Rays rotate with `A/D`, move with `W/S`, and stop at the first wall they hit.
+- What was added:
+  - new `src/raycast.rs` module with single-ray hit queries and multi-ray debug fan generation
+  - DDA-style grid stepping that preserves hit position, tile coordinates, distance, and wall material
+  - ray rendering in `src/debug_view.rs`
+  - frame-by-frame ray fan wiring in `src/main.rs`
+  - unit tests for nearby hits, material preservation, no-hit exits, fan ordering, and axis-aligned rays
+- Architectural result:
+  - Ray hit math is now isolated from rendering and player movement, which creates a clean base for the later first-person wall-column step.
+- Scope at the end of the stage:
+  - The prototype can visibly cast rays in the debug map, but it still does not render first-person wall columns, textures, or shading.

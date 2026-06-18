@@ -316,6 +316,34 @@ Examples of acceptable manual-QA outcomes:
 - Collision prevents walking through walls.
 - A sprite appears and reacts to hits.
 
+## Documentation Maintenance
+
+Project documentation should be updated as part of finishing development work, not as optional cleanup afterward.
+
+This project currently maintains two documentation files for AI collaboration:
+
+- `docs/ai-project-snapshot.md`
+  - This is the current-state document.
+  - It should describe what exists in the codebase right now.
+  - Keep it short, high-signal, and easy for an AI agent to scan quickly.
+  - Update it when user-visible behavior, module ownership, important invariants, tests, or known limits change.
+
+- `docs/development-log.md`
+  - This is the append-only history document.
+  - It should record meaningful development stages after they are completed.
+  - Each entry should focus on:
+    - the user-visible result
+    - the main code or architecture change
+    - the scope boundary at the end of that stage
+
+Documentation updates should stay proportional to the size of the change:
+
+- Small internal changes may only require a small snapshot update.
+- A visible or structurally meaningful step should usually update both files.
+- Do not let documentation become a second implementation task. Prefer short factual updates over long prose.
+
+If code changes make documentation inaccurate, fixing the documentation is part of completing the task.
+
 ## Definition of Done for a Step
 
 A task is done only when all of the following are true:
@@ -325,6 +353,7 @@ A task is done only when all of the following are true:
 - There is an observable result in the running project.
 - Manual QA instructions are clear and short.
 - Relevant unit tests pass, or the task explicitly documents why a unit test is not appropriate yet.
+- Relevant project documentation is updated when the change affects current behavior, ownership boundaries, tests, or known limits.
 - The intended APIs or module boundaries are present and coherent.
 - The change does not quietly expand project scope.
 

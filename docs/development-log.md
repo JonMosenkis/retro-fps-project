@@ -72,3 +72,19 @@ This file is append-only. It records what changed by development stage so future
   - Ray hit math is now isolated from rendering and player movement, which creates a clean base for the later first-person wall-column step.
 - Scope at the end of the stage:
   - The prototype can visibly cast rays in the debug map, but it still does not render first-person wall columns, textures, or shading.
+
+## Stage 5 - Split 3D panel projected from view-ray samples
+- Date: 2026-06-18
+- User-visible result:
+  - The window now shows a simple 3D wall view on the left and a scaled top-down debug view on the right.
+  - Moving and turning update both panels together, so the player can compare the 3D projection against the same rays in the debug map.
+- What was added:
+  - new `src/view_3d.rs` module for projecting ray hits into vertical spans and drawing the 3D panel
+  - `ViewRaySample` data in `src/raycast.rs` so one ray fan can feed both the 3D panel and the debug panel
+  - scaled split-panel debug rendering in `src/debug_view.rs`
+  - split-screen layout and per-frame 3D projection wiring in `src/main.rs`
+  - unit tests for 3D span projection behavior and color mapping
+- Architectural result:
+  - The code now separates world sampling (`raycast.rs`) from screen-space projection (`view_3d.rs`) and from debug visualization (`debug_view.rs`), which keeps the current wall-only step readable without locking the project into a wall-specific renderer API.
+- Scope at the end of the stage:
+  - The prototype can render flat-colored 3D wall spans, but it still has no textures, floor or ceiling rendering, sprites, doors, or broader scene content.

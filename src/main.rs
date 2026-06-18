@@ -2,13 +2,15 @@ mod debug_view;
 mod map;
 mod player;
 mod raycast;
+mod view_3d;
 
-use debug_view::{draw_map, draw_player, draw_rays};
+use debug_view::draw_debug_view;
 use macroquad::prelude::*;
 use map::{Map, TILE_SIZE};
 use player::{Player, PlayerIntent};
-use raycast::cast_rays;
+use raycast::cast_view_rays;
 use std::f32::consts::FRAC_PI_3;
+use view_3d::{draw_view_3d, project_view_spans};
 
 const WINDOW_WIDTH: i32 = 640;
 const WINDOW_HEIGHT: i32 = 480;
@@ -16,6 +18,7 @@ const SIMULATION_STEP_SECONDS: f32 = 1.0 / 60.0;
 const MAX_FRAME_SECONDS: f32 = 0.25;
 const DEBUG_RAY_COUNT: usize = 31;
 const DEBUG_FOV_RADIANS: f32 = FRAC_PI_3;
+const MAIN_VIEW_WIDTH_RATIO: f32 = 0.7;
 const LEVEL_ROWS: [&str; 8] = [
     "1111111111",
     "1........1",
@@ -53,7 +56,7 @@ async fn main() {
         }
 
         clear_background(BLACK);
-        let rays = cast_rays(
+        let view_rays = cast_view_rays(
             &map,
             player.x(),
             player.y(),
@@ -61,9 +64,27 @@ async fn main() {
             DEBUG_RAY_COUNT,
             DEBUG_FOV_RADIANS,
         );
-        draw_map(&map);
-        draw_rays(&rays);
-        draw_player(&player);
+        let main_view_rect = Rect::new(
+            0.0,
+            0.0,
+            WINDOW_WIDTH as f32 * MAIN_VIEW_WIDTH_RATIO,
+            WINDOW_HEIGHT as f32,
+        );
+        let debug_view_rect = Rect::new(
+            main_view_rect.w,
+            0.0,
+            WINDOW_WIDTH as f32 - main_view_rect.w,
+            WINDOW_HEIGHT as f32,
+        );
+        let spans = project_view_spans(
+            &view_rays,
+            player.facing_angle(),
+            main_view_rect.w,
+            main_view_rect.h,
+        );
+
+        draw_view_3d(&spans, main_view_rect);
+        draw_debug_view(&map, &player, &view_rays, debug_view_rect);
 
         next_frame().await;
     }

@@ -11,9 +11,10 @@ pub struct RayHit {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct DebugRay {
-    pub origin_x: f32,
-    pub origin_y: f32,
+pub struct ViewRaySample {
+    pub index: usize,
+    pub angle: f32,
+    pub hit: Option<RayHit>,
     pub end_x: f32,
     pub end_y: f32,
 }
@@ -78,14 +79,14 @@ pub fn cast_ray(map: &Map, origin_x: f32, origin_y: f32, angle: f32) -> Option<R
     }
 }
 
-pub fn cast_rays(
+pub fn cast_view_rays(
     map: &Map,
     origin_x: f32,
     origin_y: f32,
     facing_angle: f32,
     ray_count: usize,
     fov_radians: f32,
-) -> Vec<DebugRay> {
+) -> Vec<ViewRaySample> {
     if ray_count == 0 {
         return Vec::new();
     }
@@ -102,16 +103,17 @@ pub fn cast_rays(
             let angle = start_angle + angle_step * index as f32;
             let direction_x = angle.cos();
             let direction_y = angle.sin();
-
-            let (end_x, end_y) = match cast_ray(map, origin_x, origin_y, angle) {
-                Some(hit) => (hit.hit_x, hit.hit_y),
+            let hit = cast_ray(map, origin_x, origin_y, angle);
+            let (end_x, end_y) = match hit {
+                Some(ray_hit) => (ray_hit.hit_x, ray_hit.hit_y),
                 None => map_exit_point(map, origin_x, origin_y, direction_x, direction_y)
                     .unwrap_or((origin_x, origin_y)),
             };
 
-            DebugRay {
-                origin_x,
-                origin_y,
+            ViewRaySample {
+                index,
+                angle,
+                hit,
                 end_x,
                 end_y,
             }
@@ -231,7 +233,7 @@ fn is_in_bounds(map: &Map, tile_x: i32, tile_y: i32) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{cast_ray, cast_rays};
+    use super::{cast_ray, cast_view_rays};
     use crate::map::Map;
     use std::f32::consts::{FRAC_PI_2, FRAC_PI_3};
 
@@ -272,14 +274,14 @@ mod tests {
     }
 
     #[test]
-    fn cast_rays_returns_requested_count_in_left_to_right_angle_order() {
+    fn cast_view_rays_returns_requested_count_in_left_to_right_angle_order() {
         let map = Map::from_rows(&["....", "....", "....", "...."]).expect("map should parse");
-        let rays = cast_rays(&map, 72.0, 72.0, FRAC_PI_2, 5, FRAC_PI_3);
+        let rays = cast_view_rays(&map, 72.0, 72.0, FRAC_PI_2, 5, FRAC_PI_3);
 
         assert_eq!(rays.len(), 5);
-        assert!(rays[0].end_x > rays[1].end_x);
-        assert!((rays[2].end_x - 72.0).abs() < FLOAT_TOLERANCE);
-        assert!(rays[3].end_x > rays[4].end_x);
+        assert!(rays[0].angle < rays[1].angle);
+        assert!((rays[2].angle - FRAC_PI_2).abs() < FLOAT_TOLERANCE);
+        assert!(rays[3].angle < rays[4].angle);
     }
 
     #[test]

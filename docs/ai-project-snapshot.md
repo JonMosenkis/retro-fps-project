@@ -107,6 +107,14 @@
 - `src/raycast.rs` covers first-hit distance, material preservation, no-hit map exits, left-to-right sampling order, and axis-aligned rays.
 - `src/view_3d.rs` covers distance-based span height, fisheye correction symmetry, no-hit omission, left-to-right span order, base material colors, distance shading clamps, shaded material distinction, and horizon placement.
 
+## Developer Workflow
+- `README.md` is the top-level human-facing entry point for project purpose, run instructions, and development setup.
+- Run `./scripts/check.sh` before declaring a coding task complete.
+- The check script runs `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, and `cargo test`.
+- `clippy` is a development-time requirement, not a runtime dependency.
+- If `clippy` is missing locally, install it once with `rustup component add clippy`.
+- `docs/subagents.md` defines optional focused reviewer roles for architecture, Rust clarity, correctness, and playability checks.
+
 ## Manual QA
 - Run: `cargo run`
 - Expect:

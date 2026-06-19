@@ -105,3 +105,19 @@ This file is append-only. It records what changed by development stage so future
 - Follow-up note:
   - The current distance shading is a simple camera-distance cue, not world lighting.
   - A likely next visual step is side shading based on whether a ray hit a vertical or horizontal wall face, which should feel closer to classic raycasters without adding a full lighting system.
+
+## Stage 7 - Agent workflow tightened with task template and quality gate
+- Date: 2026-06-19
+- User-visible result:
+  - AI collaboration instructions are shorter to scan, contributors now have a single verification command to run before claiming a task is complete, the repo now has a top-level README for human onboarding, and optional reviewer subagents are documented for focused design and review passes.
+- What was added:
+  - slimmer `AGENTS.md` focused on working rules, documentation expectations, and definition of done
+  - new `docs/task-template.md` for the canonical planning format
+  - new `scripts/check.sh` wrapper for formatting, lint, and test checks
+  - new `README.md` with project overview, run instructions, and development setup
+  - new `docs/subagents.md` with role definitions, usage guidance, and prompt templates for focused review agents
+  - clear setup guidance that `clippy` is required only for development workflows
+- Architectural result:
+  - Project guidance now separates stable agent rules from reusable planning structure and reviewer prompt definitions, which reduces instruction sprawl without losing the task contract.
+- Scope at the end of the stage:
+  - The runtime game prototype is unchanged, but the development workflow is stricter and easier for agents and contributors to follow consistently.

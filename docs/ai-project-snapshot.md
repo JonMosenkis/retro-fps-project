@@ -7,7 +7,9 @@
 ## Current Vertical Slice
 - Running the project opens a `macroquad` window titled `Retro FPS Debug Map`.
 - The left side shows a simple 3D scene with a flat ceiling band, a flat floor band, and shaded wall spans.
-- The right side shows a scaled top-down debug map with the player marker and ray fan.
+- The left side uses a denser shared ray fan, so wall columns look noticeably slimmer than before.
+- The left side now combines distance shading with lighter vertical-face walls and slightly darker horizontal-face walls, so corners read as separate planes more clearly.
+- The right side shows a scaled top-down debug map with the player marker, the same shared ray fan, and small hit markers that show which wall-face family each ray struck.
 - `W` moves forward, `S` moves backward, `A` turns left, and `D` turns right.
 - Both wall tile types block movement, so the player cannot move through either one.
 - Moving and turning updates both views from the same player state.
@@ -45,6 +47,8 @@
   - Rendering is top-down only and lives in the right-side split panel.
   - The debug map scales to fit its viewport instead of assuming a fixed tile size on screen.
   - Rays are drawn from already-computed world-space endpoints.
+  - Dense ray fans automatically use thinner, more transparent debug lines so the right panel stays readable.
+  - Hit rays also draw a small endpoint marker so vertical-face and horizontal-face hits are easy to compare.
   - Material `1` and material `2` use different solid colors for easy inspection.
   - Unknown material ids render as `MAGENTA` so missing debug colors are obvious.
   - The module owns the whole debug panel, including its background.
@@ -59,6 +63,7 @@
   - Only hit rays create spans; rays that leave the map create no 3D wall slice.
   - The renderer fills the top half with a ceiling color and the bottom half with a floor color before drawing walls.
   - Wall colors come from material-specific base colors plus simple clamped distance darkening.
+  - The final wall shade also depends on whether a ray hit a vertical or horizontal wall face.
   - Unknown material ids still render as `MAGENTA` so missing wall colors stay obvious.
 
 ### Raycasting
@@ -68,8 +73,8 @@
   - A single ray returns `Option<RayHit>` so no-hit cases stay simple.
   - `cast_view_rays` returns left-to-right ray samples for the active field of view.
   - Ray stepping checks one grid boundary at a time until a wall is hit or the ray exits the map.
-  - Hit results preserve the struck wall material and tile coordinates.
-  - The debug ray fan is fixed at `31` rays across a `60` degree field of view.
+  - Hit results preserve the struck wall material, tile coordinates, and whether the hit came from a vertical or horizontal grid crossing.
+  - The shared view ray fan is fixed at `91` rays across a `60` degree field of view for both the 3D panel and the debug panel.
   - Rays that leave the map without hitting a wall still end at the map edge in the debug view.
 
 ### App Loop and Input
@@ -104,8 +109,9 @@
 ## Tests That Exist
 - `src/map.rs` covers map parsing, tile lookup, bounds behavior, and blocked-vs-empty world queries.
 - `src/player.rs` covers forward/backward movement, turning, wall collision, and deterministic replay of the same input sequence.
-- `src/raycast.rs` covers first-hit distance, material preservation, no-hit map exits, left-to-right sampling order, and axis-aligned rays.
-- `src/view_3d.rs` covers distance-based span height, fisheye correction symmetry, no-hit omission, left-to-right span order, base material colors, distance shading clamps, shaded material distinction, and horizon placement.
+- `src/raycast.rs` covers first-hit distance, material preservation, hit-face orientation, no-hit map exits, left-to-right sampling order, and axis-aligned rays.
+- `src/view_3d.rs` covers distance-based span height, fisheye correction symmetry, no-hit omission, left-to-right span order, base material colors, distance shading clamps, face-orientation shading, shaded material distinction, and horizon placement.
+- `src/debug_view.rs` covers stable debug-ray styling thresholds for sparse, medium, and dense shared ray fans plus stable hit-marker colors for the two face orientations.
 
 ## Developer Workflow
 - `README.md` is the top-level human-facing entry point for project purpose, run instructions, and development setup.
@@ -120,11 +126,14 @@
 - Expect:
   - a window opens
   - the left side shows a ceiling band, a floor band, and shaded wall columns
-  - the right side shows a scaled top-down tile map with the player marker and visible ray fan
+  - the right side shows a scaled top-down tile map with the player marker and a readable shared ray fan
   - `W/S` move forward/backward
   - `A/D` rotate the player
   - the 3D view and the debug rays rotate and move together
   - nearby walls appear taller and brighter in the 3D panel than distant walls
+  - the 3D wall columns look slimmer and less chunky than the earlier low-ray version
+  - wall corners read as two planes because one face family is slightly darker than the other
+  - debug hit markers change color when rays switch between vertical-face and horizontal-face hits
   - the player stops at both wall materials and slides along them when moving diagonally into edges over multiple frames
 
 ## Known Limits

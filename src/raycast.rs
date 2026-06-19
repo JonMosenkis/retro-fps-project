@@ -1,5 +1,11 @@
 use crate::map::{Map, Tile, Wall, TILE_SIZE};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WallFaceOrientation {
+    Vertical,
+    Horizontal,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RayHit {
     pub hit_x: f32,
@@ -8,6 +14,7 @@ pub struct RayHit {
     pub tile_x: usize,
     pub tile_y: usize,
     pub wall: Wall,
+    pub face_orientation: WallFaceOrientation,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -42,18 +49,18 @@ pub fn cast_ray(map: &Map, origin_x: f32, origin_y: f32, angle: f32) -> Option<R
         first_horizontal_boundary_distance(origin_y, tile_y, direction_y, delta_distance_y);
 
     loop {
-        let hit_vertical_side = side_distance_x <= side_distance_y;
-        let hit_distance = if hit_vertical_side {
+        let face_orientation = if side_distance_x <= side_distance_y {
             tile_x += step_x;
             let distance = side_distance_x;
             side_distance_x += delta_distance_x;
-            distance
+            (distance, WallFaceOrientation::Vertical)
         } else {
             tile_y += step_y;
             let distance = side_distance_y;
             side_distance_y += delta_distance_y;
-            distance
+            (distance, WallFaceOrientation::Horizontal)
         };
+        let (hit_distance, face_orientation) = face_orientation;
 
         if !is_in_bounds(map, tile_x, tile_y) {
             return None;
@@ -71,6 +78,7 @@ pub fn cast_ray(map: &Map, origin_x: f32, origin_y: f32, angle: f32) -> Option<R
                     tile_x: hit_tile_x,
                     tile_y: hit_tile_y,
                     wall,
+                    face_orientation,
                 });
             }
             Some(Tile::Empty) => {}
@@ -233,7 +241,7 @@ fn is_in_bounds(map: &Map, tile_x: i32, tile_y: i32) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{cast_ray, cast_view_rays};
+    use super::{cast_ray, cast_view_rays, WallFaceOrientation};
     use crate::map::Map;
     use std::f32::consts::{FRAC_PI_2, FRAC_PI_3};
 
@@ -293,5 +301,21 @@ mod tests {
 
         assert_eq!((horizontal_hit.tile_x, horizontal_hit.tile_y), (1, 1));
         assert_eq!(vertical_hit.wall.material_id, 1);
+    }
+
+    #[test]
+    fn cast_ray_reports_vertical_face_for_vertical_grid_crossing() {
+        let map = Map::from_rows(&["....", ".1..", "...."]).expect("map should parse");
+        let hit = cast_ray(&map, 24.0, 72.0, 0.0).expect("ray should hit wall");
+
+        assert_eq!(hit.face_orientation, WallFaceOrientation::Vertical);
+    }
+
+    #[test]
+    fn cast_ray_reports_horizontal_face_for_horizontal_grid_crossing() {
+        let map = Map::from_rows(&["...", "...", ".1."]).expect("map should parse");
+        let hit = cast_ray(&map, 72.0, 24.0, FRAC_PI_2).expect("ray should hit wall");
+
+        assert_eq!(hit.face_orientation, WallFaceOrientation::Horizontal);
     }
 }

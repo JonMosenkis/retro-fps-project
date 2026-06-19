@@ -1,14 +1,14 @@
 use crate::{
     map::{Map, MaterialId, Tile, TILE_SIZE},
     player::Player,
-    raycast::ViewRaySample,
+    raycast::{ViewRaySample, WallFaceOrientation},
 };
 use macroquad::prelude::*;
 
 const GRID_LINE_THICKNESS: f32 = 1.0;
+const HIT_MARKER_RADIUS: f32 = 2.5;
 const PLAYER_RADIUS: f32 = 6.0;
 const PLAYER_DIRECTION_LENGTH: f32 = 14.0;
-const RAY_THICKNESS: f32 = 1.5;
 const VIEWPORT_PADDING: f32 = 12.0;
 
 pub fn draw_debug_view(map: &Map, player: &Player, rays: &[ViewRaySample], viewport: Rect) {
@@ -92,6 +92,7 @@ fn draw_map(map: &Map, layout: &DebugViewLayout) {
 fn draw_rays(player: &Player, rays: &[ViewRaySample], layout: &DebugViewLayout) {
     let origin_x = layout.world_to_screen_x(player.x());
     let origin_y = layout.world_to_screen_y(player.y());
+    let ray_style = ray_style_for_count(rays.len());
 
     for ray in rays {
         draw_line(
@@ -99,9 +100,18 @@ fn draw_rays(player: &Player, rays: &[ViewRaySample], layout: &DebugViewLayout) 
             origin_y,
             layout.world_to_screen_x(ray.end_x),
             layout.world_to_screen_y(ray.end_y),
-            RAY_THICKNESS,
-            Color::from_rgba(255, 245, 140, 190),
+            ray_style.thickness,
+            ray_style.color,
         );
+
+        if let Some(hit) = ray.hit {
+            draw_circle(
+                layout.world_to_screen_x(hit.hit_x),
+                layout.world_to_screen_y(hit.hit_y),
+                HIT_MARKER_RADIUS,
+                hit_marker_color(hit.face_orientation),
+            );
+        }
     }
 }
 
@@ -139,5 +149,72 @@ fn color_for_material(material_id: MaterialId) -> Color {
         1 => Color::from_rgba(50, 115, 220, 255),
         2 => Color::from_rgba(210, 120, 40, 255),
         _ => MAGENTA,
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct RayStyle {
+    thickness: f32,
+    color: Color,
+}
+
+fn ray_style_for_count(ray_count: usize) -> RayStyle {
+    if ray_count >= 80 {
+        RayStyle {
+            thickness: 1.0,
+            color: Color::from_rgba(255, 245, 140, 110),
+        }
+    } else if ray_count >= 48 {
+        RayStyle {
+            thickness: 1.25,
+            color: Color::from_rgba(255, 245, 140, 150),
+        }
+    } else {
+        RayStyle {
+            thickness: 1.5,
+            color: Color::from_rgba(255, 245, 140, 190),
+        }
+    }
+}
+
+fn hit_marker_color(face_orientation: WallFaceOrientation) -> Color {
+    match face_orientation {
+        WallFaceOrientation::Vertical => Color::from_rgba(255, 250, 210, 255),
+        WallFaceOrientation::Horizontal => Color::from_rgba(255, 150, 110, 255),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{hit_marker_color, ray_style_for_count};
+    use crate::raycast::WallFaceOrientation;
+
+    #[test]
+    fn dense_ray_fans_use_thinner_more_transparent_lines() {
+        let sparse = ray_style_for_count(31);
+        let dense = ray_style_for_count(91);
+
+        assert!(dense.thickness < sparse.thickness);
+        assert!(dense.color.a < sparse.color.a);
+    }
+
+    #[test]
+    fn medium_ray_fans_use_intermediate_styling() {
+        let sparse = ray_style_for_count(31);
+        let medium = ray_style_for_count(64);
+        let dense = ray_style_for_count(91);
+
+        assert!(sparse.thickness > medium.thickness);
+        assert!(medium.thickness > dense.thickness);
+        assert!(sparse.color.a > medium.color.a);
+        assert!(medium.color.a > dense.color.a);
+    }
+
+    #[test]
+    fn face_hit_markers_use_different_colors() {
+        let vertical = hit_marker_color(WallFaceOrientation::Vertical);
+        let horizontal = hit_marker_color(WallFaceOrientation::Horizontal);
+
+        assert_ne!(vertical, horizontal);
     }
 }

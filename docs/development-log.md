@@ -121,3 +121,24 @@ This file is append-only. It records what changed by development stage so future
   - Project guidance now separates stable agent rules from reusable planning structure and reviewer prompt definitions, which reduces instruction sprawl without losing the task contract.
 - Scope at the end of the stage:
   - The runtime game prototype is unchanged, but the development workflow is stricter and easier for agents and contributors to follow consistently.
+
+## Stage 8 - Sharper first-person view and clearer wall corners
+- Date: 2026-06-19
+- User-visible result:
+  - The left 3D panel now uses noticeably slimmer wall columns, so turning and movement look less chunky.
+  - The right debug map still shows the same shared ray fan, but the ray lines are thinner and more transparent to keep the panel readable.
+  - The 3D panel now shades vertical and horizontal wall faces slightly differently, so inside and outside corners read more like separate planes instead of one flat block.
+  - The debug panel now adds a small colored hit marker at each ray endpoint, which shows whether that ray struck a vertical-face wall or a horizontal-face wall.
+- What was added:
+  - increased the shared view ray count in `src/main.rs` from `31` to `91`
+  - adaptive debug ray styling in `src/debug_view.rs` based on ray density
+  - `WallFaceOrientation` on ray hits in `src/raycast.rs`
+  - face-orientation-aware wall shading in `src/view_3d.rs`
+  - hit-endpoint markers in `src/debug_view.rs`
+  - a projection test in `src/view_3d.rs` that checks denser samples produce narrower columns
+  - debug-view tests that cover stable sparse, medium, and dense ray-style thresholds
+  - unit tests for vertical vs horizontal hit orientation, face shading, and debug marker color selection
+- Architectural result:
+  - The app still uses one shared ray-sampling path for both panels, so the sharper 3D view and the corner-readability cues do not add a second rendering pipeline or new map abstractions.
+- Scope at the end of the stage:
+  - The prototype still uses the same ASCII map input and still has no sprites, doors, textures, or richer lighting model yet.

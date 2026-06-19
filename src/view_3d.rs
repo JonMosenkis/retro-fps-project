@@ -1,5 +1,5 @@
 use crate::map::MaterialId;
-use crate::raycast::ViewRaySample;
+use crate::raycast::{ViewRaySample, WallFaceOrientation};
 use macroquad::prelude::*;
 
 const WALL_HEIGHT_WORLD_UNITS: f32 = 48.0;
@@ -18,6 +18,8 @@ const FLOOR_COLOR: Color = Color {
 };
 const MIN_SHADE_INTENSITY: f32 = 0.25;
 const SHADE_FALLOFF_DISTANCE: f32 = 240.0;
+const VERTICAL_FACE_SHADE: f32 = 1.0;
+const HORIZONTAL_FACE_SHADE: f32 = 0.82;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct VerticalSpan {
@@ -26,6 +28,7 @@ pub struct VerticalSpan {
     pub top_y: f32,
     pub bottom_y: f32,
     pub material_id: MaterialId,
+    pub face_orientation: WallFaceOrientation,
 }
 
 pub fn project_view_spans(
@@ -62,6 +65,7 @@ pub fn project_view_spans(
                 top_y,
                 bottom_y,
                 material_id: hit.wall.material_id,
+                face_orientation: hit.face_orientation,
             })
         })
         .collect()
@@ -102,6 +106,7 @@ pub fn draw_view_3d(spans: &[VerticalSpan], viewport_rect: Rect) {
                     viewport_rect.h,
                     WALL_HEIGHT_WORLD_UNITS,
                 ),
+                span.face_orientation,
             ),
         );
     }
@@ -138,8 +143,12 @@ fn shade_for_distance(distance: f32) -> f32 {
     (1.0 - distance / SHADE_FALLOFF_DISTANCE).clamp(MIN_SHADE_INTENSITY, 1.0)
 }
 
-fn wall_color_for_distance(material_id: MaterialId, distance: f32) -> Color {
-    let shade = shade_for_distance(distance);
+fn wall_color_for_distance(
+    material_id: MaterialId,
+    distance: f32,
+    face_orientation: WallFaceOrientation,
+) -> Color {
+    let shade = shade_for_distance(distance) * face_shade(face_orientation);
     let base_color = base_color_for_material(material_id);
 
     Color {
@@ -147,6 +156,13 @@ fn wall_color_for_distance(material_id: MaterialId, distance: f32) -> Color {
         g: (base_color.g * shade).clamp(0.0, 1.0),
         b: (base_color.b * shade).clamp(0.0, 1.0),
         a: base_color.a,
+    }
+}
+
+fn face_shade(face_orientation: WallFaceOrientation) -> f32 {
+    match face_orientation {
+        WallFaceOrientation::Vertical => VERTICAL_FACE_SHADE,
+        WallFaceOrientation::Horizontal => HORIZONTAL_FACE_SHADE,
     }
 }
 
@@ -166,7 +182,7 @@ mod tests {
     };
     use crate::{
         map::Wall,
-        raycast::{RayHit, ViewRaySample},
+        raycast::{RayHit, ViewRaySample, WallFaceOrientation},
     };
     use macroquad::prelude::Color;
     use std::f32::consts::FRAC_PI_4;
@@ -174,8 +190,8 @@ mod tests {
     #[test]
     fn nearer_hit_projects_taller_span() {
         let samples = [
-            sample_with_hit(0, 0.0, 40.0, 1),
-            sample_with_hit(1, 0.0, 80.0, 1),
+            sample_with_hit(0, 0.0, 40.0, 1, WallFaceOrientation::Vertical),
+            sample_with_hit(1, 0.0, 80.0, 1, WallFaceOrientation::Vertical),
         ];
 
         let spans = project_view_spans(&samples, 0.0, 200.0, 120.0);
@@ -189,8 +205,8 @@ mod tests {
     #[test]
     fn symmetric_rays_keep_matching_heights_after_fisheye_correction() {
         let samples = [
-            sample_with_hit(0, -FRAC_PI_4 * 0.5, 100.0, 1),
-            sample_with_hit(1, FRAC_PI_4 * 0.5, 100.0, 1),
+            sample_with_hit(0, -FRAC_PI_4 * 0.5, 100.0, 1, WallFaceOrientation::Vertical),
+            sample_with_hit(1, FRAC_PI_4 * 0.5, 100.0, 1, WallFaceOrientation::Vertical),
         ];
 
         let spans = project_view_spans(&samples, 0.0, 200.0, 120.0);
@@ -218,15 +234,36 @@ mod tests {
     #[test]
     fn projected_spans_preserve_left_to_right_order() {
         let samples = [
-            sample_with_hit(0, -0.2, 50.0, 1),
-            sample_with_hit(1, 0.0, 60.0, 1),
-            sample_with_hit(2, 0.2, 70.0, 1),
+            sample_with_hit(0, -0.2, 50.0, 1, WallFaceOrientation::Vertical),
+            sample_with_hit(1, 0.0, 60.0, 1, WallFaceOrientation::Vertical),
+            sample_with_hit(2, 0.2, 70.0, 1, WallFaceOrientation::Vertical),
         ];
 
         let spans = project_view_spans(&samples, 0.0, 300.0, 120.0);
 
         assert!(spans[0].screen_x < spans[1].screen_x);
         assert!(spans[1].screen_x < spans[2].screen_x);
+    }
+
+    #[test]
+    fn more_samples_produce_narrower_columns() {
+        let sparse_samples = [
+            sample_with_hit(0, -0.2, 60.0, 1, WallFaceOrientation::Vertical),
+            sample_with_hit(1, 0.0, 60.0, 1, WallFaceOrientation::Vertical),
+            sample_with_hit(2, 0.2, 60.0, 1, WallFaceOrientation::Vertical),
+        ];
+        let dense_samples = [
+            sample_with_hit(0, -0.2, 60.0, 1, WallFaceOrientation::Vertical),
+            sample_with_hit(1, -0.1, 60.0, 1, WallFaceOrientation::Vertical),
+            sample_with_hit(2, 0.0, 60.0, 1, WallFaceOrientation::Vertical),
+            sample_with_hit(3, 0.1, 60.0, 1, WallFaceOrientation::Vertical),
+            sample_with_hit(4, 0.2, 60.0, 1, WallFaceOrientation::Vertical),
+        ];
+
+        let sparse_spans = project_view_spans(&sparse_samples, 0.0, 300.0, 120.0);
+        let dense_spans = project_view_spans(&dense_samples, 0.0, 300.0, 120.0);
+
+        assert!(dense_spans[0].width < sparse_spans[0].width);
     }
 
     #[test]
@@ -247,8 +284,8 @@ mod tests {
 
     #[test]
     fn nearer_distance_produces_brighter_wall_color() {
-        let near_color = wall_color_for_distance(1, 40.0);
-        let far_color = wall_color_for_distance(1, 160.0);
+        let near_color = wall_color_for_distance(1, 40.0, WallFaceOrientation::Vertical);
+        let far_color = wall_color_for_distance(1, 160.0, WallFaceOrientation::Vertical);
 
         assert!(near_color.r > far_color.r);
         assert!(near_color.g > far_color.g);
@@ -266,8 +303,8 @@ mod tests {
 
     #[test]
     fn different_materials_stay_distinct_after_shading() {
-        let material_one = wall_color_for_distance(1, 120.0);
-        let material_two = wall_color_for_distance(2, 120.0);
+        let material_one = wall_color_for_distance(1, 120.0, WallFaceOrientation::Vertical);
+        let material_two = wall_color_for_distance(2, 120.0, WallFaceOrientation::Vertical);
 
         assert_ne!(material_one, material_two);
     }
@@ -277,7 +314,31 @@ mod tests {
         assert_eq!(horizon_y(120.0), 60.0);
     }
 
-    fn sample_with_hit(index: usize, angle: f32, distance: f32, material_id: u8) -> ViewRaySample {
+    #[test]
+    fn face_orientation_changes_final_wall_color_at_same_distance() {
+        let vertical = wall_color_for_distance(1, 120.0, WallFaceOrientation::Vertical);
+        let horizontal = wall_color_for_distance(1, 120.0, WallFaceOrientation::Horizontal);
+
+        assert_ne!(vertical, horizontal);
+    }
+
+    #[test]
+    fn horizontal_face_stays_darker_after_distance_shading() {
+        let vertical = wall_color_for_distance(1, 180.0, WallFaceOrientation::Vertical);
+        let horizontal = wall_color_for_distance(1, 180.0, WallFaceOrientation::Horizontal);
+
+        assert!(horizontal.r < vertical.r);
+        assert!(horizontal.g < vertical.g);
+        assert!(horizontal.b < vertical.b);
+    }
+
+    fn sample_with_hit(
+        index: usize,
+        angle: f32,
+        distance: f32,
+        material_id: u8,
+        face_orientation: WallFaceOrientation,
+    ) -> ViewRaySample {
         ViewRaySample {
             index,
             angle,
@@ -288,6 +349,7 @@ mod tests {
                 tile_x: 0,
                 tile_y: 0,
                 wall: Wall { material_id },
+                face_orientation,
             }),
             end_x: 0.0,
             end_y: 0.0,
